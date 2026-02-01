@@ -1,14 +1,35 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { MapContainer, TileLayer, Polygon, useMap, useMapEvents } from 'react-leaflet';
 import * as h3 from 'h3-js';
 import { RefreshCw, LocateFixed, Loader2 } from 'lucide-react';
 import { H3Hexagon, AppSettings } from '../types';
 
+// Map Zoom to H3 Resolution mapping table
+const getAutoResolution = (zoom: number): number => {
+  if (zoom <= 2) return 0;
+  if (zoom <= 4) return 1;
+  if (zoom <= 5) return 2;
+  if (zoom <= 6) return 3;
+  if (zoom <= 7) return 4;
+  if (zoom <= 9) return 5;
+  if (zoom <= 11) return 6;
+  if (zoom <= 13) return 7;
+  if (zoom <= 14) return 8;
+  if (zoom <= 15) return 9;
+  if (zoom <= 16) return 10;
+  if (zoom <= 17) return 11;
+  if (zoom <= 18) return 12;
+  return 13;
+};
+
 // Component to handle map instance operations
 const MapController: React.FC<{ 
   onBoundsChange: (bounds: any) => void; 
   autoUpdate: boolean;
-}> = ({ onBoundsChange, autoUpdate }) => {
+  autoScale: boolean;
+  resolution: number;
+  setSettings: React.Dispatch<React.SetStateAction<AppSettings>>;
+}> = ({ onBoundsChange, autoUpdate, autoScale, resolution, setSettings }) => {
   const map = useMap();
 
   useMapEvents({
@@ -16,6 +37,12 @@ const MapController: React.FC<{
       if (autoUpdate) onBoundsChange(map.getBounds());
     },
     zoomend: () => {
+      if (autoScale) {
+        const newRes = getAutoResolution(map.getZoom());
+        if (newRes !== resolution) {
+          setSettings(prev => ({ ...prev, resolution: newRes }));
+        }
+      }
       onBoundsChange(map.getBounds());
     }
   });
@@ -37,7 +64,8 @@ const getHexagonsInBounds = (bounds: any, resolution: number): H3Hexagon[] => {
     ];
     
     const hexIds = h3.polygonToCells(polygon as any, resolution);
-    const limitedHexIds = hexIds.length > 2500 ? hexIds.slice(0, 2500) : hexIds;
+    // Increased limit to 15,000 for Canvas performance
+    const limitedHexIds = hexIds.length > 15000 ? hexIds.slice(0, 15000) : hexIds;
 
     return limitedHexIds.map(id => {
       const boundary = h3.cellToBoundary(id);
@@ -105,9 +133,9 @@ const H3Map: React.FC<H3MapProps> = ({
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        setSettings(prev => ({ ...prev, resolution: 6 }));
+        setSettings(prev => ({ ...prev, resolution: 8, autoScale: true }));
         if (mapRef.current) {
-          mapRef.current.flyTo([latitude, longitude], 12, {
+          mapRef.current.flyTo([latitude, longitude], 14, {
             duration: 1.5,
             easeLinearity: 0.25
           });
@@ -123,13 +151,67 @@ const H3Map: React.FC<H3MapProps> = ({
     );
   };
 
+  // Hierarchy Overlays
+  const hierarchyLayers = useMemo(() => {
+    const parentOutlines: any[] = [];
+    const childrenSubdivisions: any[] = [];
+
+    selectedHexIds.forEach(id => {
+      const res = h3.getResolution(id);
+      
+      if (res > 0) {
+        const parentId = h3.cellToParent(id, res - 1);
+        const boundary = h3.cellToBoundary(parentId).map(p => [p[0], p[1]] as [number, number]);
+        parentOutlines.push(
+          <Polygon
+            key={`parent-${id}`}
+            positions={boundary}
+            interactive={false}
+            pathOptions={{
+              color: '#4f46e5',
+              weight: 4,
+              dashArray: '10, 15',
+              fillOpacity: 0,
+              opacity: 0.15,
+              className: 'pointer-events-none'
+            }}
+          />
+        );
+      }
+
+      if (res < 15) {
+        const children = h3.cellToChildren(id, res + 1);
+        children.forEach(cId => {
+          const boundary = h3.cellToBoundary(cId).map(p => [p[0], p[1]] as [number, number]);
+          childrenSubdivisions.push(
+            <Polygon
+              key={`child-${cId}`}
+              positions={boundary}
+              interactive={false}
+              pathOptions={{
+                color: '#64748b',
+                weight: 0.8,
+                fillOpacity: 0,
+                opacity: 0.25,
+                className: 'pointer-events-none'
+              }}
+            />
+          );
+        });
+      }
+    });
+
+    return { parentOutlines, childrenSubdivisions };
+  }, [selectedHexIds]);
+
   return (
-    <div className="w-full h-full relative">
+    <div className="w-full h-full relative overflow-hidden">
       <MapContainer 
         center={[27.7172, 85.3240]} 
         zoom={10} 
         style={{ height: '100%', width: '100%' }}
         zoomControl={false}
+        preferCanvas={true}
         ref={(ref) => { 
           mapRef.current = ref;
           if (ref && !hasInitialFlied.current) {
@@ -150,11 +232,17 @@ const H3Map: React.FC<H3MapProps> = ({
         
         <MapController 
           autoUpdate={settings.autoUpdate}
+          autoScale={settings.autoScale}
+          resolution={settings.resolution}
+          setSettings={setSettings}
           onBoundsChange={(bounds) => {
             setCurrentBounds(bounds);
             updateHexagons(bounds);
-          }} 
+          }}
         />
+
+        {hierarchyLayers.parentOutlines}
+        {hierarchyLayers.childrenSubdivisions}
 
         {hexagons.map(hex => {
           const isSelected = selectedHexIds.has(hex.id);

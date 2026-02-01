@@ -17,4 +17,5 @@ export interface AppSettings {
   showLabels: boolean;
   colorScheme: 'cool' | 'warm' | 'density';
   autoUpdate: boolean;
+  autoScale: boolean;
 }

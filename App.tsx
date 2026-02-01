@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
+import * as h3 from 'h3-js';
 import Sidebar from './components/Sidebar';
 import H3Map from './components/H3Map';
 import { AppSettings, H3Hexagon } from './types';
@@ -8,7 +9,8 @@ const App: React.FC = () => {
     resolution: 6,
     showLabels: false,
     colorScheme: 'density',
-    autoUpdate: true
+    autoUpdate: true,
+    autoScale: false
   });
 
   const [hexCount, setHexCount] = useState(0);
@@ -18,6 +20,19 @@ const App: React.FC = () => {
   const handlePositionChange = useCallback((lat: number, lng: number) => {
     setCurrentPos({ lat, lng });
   }, []);
+
+  const createHexObject = (id: string): H3Hexagon => {
+    const boundary = h3.cellToBoundary(id);
+    const center = h3.cellToLatLng(id);
+    return {
+      id,
+      boundary: boundary.map(p => [p[0], p[1]]),
+      center: [center[0], center[1]],
+      resolution: h3.getResolution(id),
+      areaKm2: h3.cellArea(id, h3.UNITS.km2),
+      areaM2: h3.cellArea(id, h3.UNITS.m2)
+    };
+  };
 
   const handleHexSelect = useCallback((hex: H3Hexagon) => {
     setSelectedHexes(prev => {
@@ -29,6 +44,39 @@ const App: React.FC = () => {
       }
       return next;
     });
+  }, []);
+
+  const selectNeighbors = useCallback((id: string) => {
+    const neighbors = h3.gridDisk(id, 1);
+    setSelectedHexes(prev => {
+      const next = new Map(prev);
+      neighbors.forEach(nId => {
+        if (!next.has(nId)) {
+          next.set(nId, createHexObject(nId));
+        }
+      });
+      return next;
+    });
+  }, []);
+
+  const upSample = useCallback((id: string) => {
+    // Going "Up" means selecting the parent (lower resolution)
+    const res = h3.getResolution(id);
+    if (res <= 0) return;
+    const parentId = h3.cellToParent(id, res - 1);
+    setSettings(prev => ({ ...prev, resolution: res - 1, autoScale: false }));
+    setSelectedHexes(new Map([[parentId, createHexObject(parentId)]]));
+  }, []);
+
+  const downSample = useCallback((id: string) => {
+    // Going "Down" means selecting children (higher resolution)
+    const res = h3.getResolution(id);
+    if (res >= 15) return;
+    const children = h3.cellToChildren(id, res + 1);
+    setSettings(prev => ({ ...prev, resolution: res + 1, autoScale: false }));
+    const next = new Map<string, H3Hexagon>();
+    children.forEach(cId => next.set(cId, createHexObject(cId)));
+    setSelectedHexes(next);
   }, []);
 
   const clearSelection = useCallback(() => {
@@ -54,6 +102,9 @@ const App: React.FC = () => {
         selectedHexes={selectedHexes}
         clearSelection={clearSelection}
         removeHex={removeHex}
+        selectNeighbors={selectNeighbors}
+        upSample={upSample}
+        downSample={downSample}
       />
       <main className="flex-1 relative overflow-hidden">
         <H3Map 

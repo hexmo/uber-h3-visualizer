@@ -1,5 +1,9 @@
 import React, { useMemo } from 'react';
-import { Settings, Info, Layers, BarChart3, Fingerprint, MapPin, X, Maximize2, Trash2 } from 'lucide-react';
+import { 
+  Settings, Info, Layers, BarChart3, Fingerprint, 
+  MapPin, X, Maximize2, Trash2, Users, 
+  ArrowUpCircle, ArrowDownCircle, Network, Scale
+} from 'lucide-react';
 import { AppSettings, H3Hexagon } from '../types';
 
 interface SidebarProps {
@@ -9,6 +13,9 @@ interface SidebarProps {
   selectedHexes: Map<string, H3Hexagon>;
   clearSelection: () => void;
   removeHex: (id: string) => void;
+  selectNeighbors: (id: string) => void;
+  upSample: (id: string) => void;
+  downSample: (id: string) => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
@@ -17,7 +24,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   hexCount,
   selectedHexes,
   clearSelection,
-  removeHex
+  removeHex,
+  selectNeighbors,
+  upSample,
+  downSample
 }) => {
   const resolutions = Array.from({ length: 13 }, (_, i) => i);
   const selectedCount = selectedHexes.size;
@@ -33,7 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   }, [selectedHexes]);
 
   const renderSingleInspector = (hex: H3Hexagon) => (
-    <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4 space-y-4">
+    <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4 space-y-4 animate-in fade-in zoom-in-95 duration-200">
       <div>
         <label className="text-[10px] uppercase font-bold text-indigo-400 tracking-widest block mb-1">Index ID</label>
         <div className="font-mono text-sm text-indigo-900 break-all select-all selection:bg-indigo-200">{hex.id}</div>
@@ -53,7 +63,39 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      <div className="pt-2 border-t border-indigo-100/50">
+      <div className="pt-3 border-t border-indigo-100/50 space-y-3">
+        <label className="text-[10px] uppercase font-bold text-indigo-400 tracking-widest block">Spatial Actions</label>
+        <div className="grid grid-cols-1 gap-2">
+          <button 
+            onClick={() => selectNeighbors(hex.id)}
+            className="w-full flex items-center justify-between px-3 py-2 bg-white border border-indigo-200 rounded-lg text-xs font-semibold text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+          >
+            <span className="flex items-center gap-2"><Users className="w-4 h-4" /> Select 1-Ring Neighbors</span>
+            <Network className="w-3 h-3 opacity-50" />
+          </button>
+          
+          <div className="grid grid-cols-2 gap-2">
+            <button 
+              onClick={() => upSample(hex.id)}
+              disabled={hex.resolution === 0}
+              className="flex items-center justify-center gap-2 py-2 bg-white border border-indigo-200 rounded-lg text-xs font-semibold text-indigo-600 hover:bg-indigo-50 disabled:opacity-30 disabled:hover:bg-white transition-all"
+              title="Select Parent (Lower Res)"
+            >
+              <ArrowUpCircle className="w-4 h-4" /> Up-Sample
+            </button>
+            <button 
+              onClick={() => downSample(hex.id)}
+              disabled={hex.resolution === 15}
+              className="flex items-center justify-center gap-2 py-2 bg-white border border-indigo-200 rounded-lg text-xs font-semibold text-indigo-600 hover:bg-indigo-50 disabled:opacity-30 disabled:hover:bg-white transition-all"
+              title="Select Children (Higher Res)"
+            >
+              <ArrowDownCircle className="w-4 h-4" /> Down-Sample
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="pt-3 border-t border-indigo-100/50">
         <label className="text-[10px] uppercase font-bold text-indigo-400 tracking-widest block mb-2">Cell Dimensions</label>
         <div className="grid grid-cols-2 gap-4">
           <div className="flex items-start gap-2">
@@ -80,10 +122,11 @@ const Sidebar: React.FC<SidebarProps> = ({
   );
 
   const renderMultiInspector = () => (
-    <div className="space-y-4">
-      <div className="bg-indigo-600 rounded-xl p-4 text-white shadow-md">
-        <div className="text-[10px] uppercase font-bold opacity-70 tracking-widest mb-3">Aggregate Metrics</div>
-        <div className="grid grid-cols-2 gap-4">
+    <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+      <div className="bg-indigo-600 rounded-xl p-4 text-white shadow-md relative overflow-hidden group">
+        <div className="absolute -right-4 -top-4 w-20 h-20 bg-white/10 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700" />
+        <div className="text-[10px] uppercase font-bold opacity-70 tracking-widest mb-3 relative">Aggregate Metrics</div>
+        <div className="grid grid-cols-2 gap-4 relative">
           <div>
             <div className="text-[10px] font-bold uppercase opacity-60">Total Area (km²)</div>
             <div className="text-lg font-mono font-bold leading-tight">{aggregateStats.totalKm2.toLocaleString(undefined, { maximumFractionDigits: 4 })}</div>
@@ -124,7 +167,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       <div className="p-6 space-y-8 flex-1">
         {/* Cell Inspector */}
-        <section className="animate-in fade-in slide-in-from-top-2 duration-300">
+        <section>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2 text-indigo-600 font-semibold uppercase text-xs tracking-wider">
               <Fingerprint className="w-4 h-4" /> {selectedCount > 1 ? `Multi-Cell Inspector (${selectedCount})` : 'Cell Inspector'}
@@ -159,16 +202,19 @@ const Sidebar: React.FC<SidebarProps> = ({
           
           <div className="space-y-6">
             <div>
-              <label className="flex justify-between text-sm mb-3 font-medium text-slate-700">
-                <span>Resolution Level</span>
-                <span className="text-indigo-600 font-mono bg-indigo-50 px-2 py-0.5 rounded">Lvl {settings.resolution}</span>
-              </label>
+              <div className="flex justify-between items-center mb-3">
+                <label className="text-sm font-medium text-slate-700">Resolution Level</label>
+                <span className="text-indigo-600 font-mono bg-indigo-50 px-2 py-0.5 rounded text-xs">Lvl {settings.resolution}</span>
+              </div>
               
               <div className="grid grid-cols-7 gap-1.5">
                 {resolutions.map((res) => (
                   <button
                     key={res}
-                    onClick={() => setSettings({...settings, resolution: res})}
+                    onClick={() => {
+                      setSettings({...settings, resolution: res, autoScale: false});
+                      clearSelection();
+                    }}
                     className={`
                       h-8 text-xs font-mono rounded-md transition-all
                       ${settings.resolution === res 
@@ -180,20 +226,34 @@ const Sidebar: React.FC<SidebarProps> = ({
                   </button>
                 ))}
               </div>
-              <p className="text-[10px] text-slate-400 mt-3 flex items-center gap-1 leading-tight">
-                <Info className="w-3 h-3" />
-                Changing resolution will clear your current selection to ensure data consistency.
-              </p>
             </div>
 
-            <div className="flex items-center justify-between pt-2">
-              <label className="text-sm font-medium text-slate-700">Auto-update View</label>
-              <button 
-                onClick={() => setSettings({...settings, autoUpdate: !settings.autoUpdate})}
-                className={`w-11 h-6 rounded-full transition-colors relative ${settings.autoUpdate ? 'bg-indigo-600' : 'bg-slate-300'}`}
-              >
-                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${settings.autoUpdate ? 'left-6' : 'left-1'}`} />
-              </button>
+            <div className="space-y-4 pt-2 border-t border-slate-100">
+               <div className="flex items-center justify-between">
+                <div className="flex flex-col">
+                  <label className="text-sm font-medium text-slate-700">Auto-scale Resolution</label>
+                  <span className="text-[10px] text-slate-400">Match res to zoom level</span>
+                </div>
+                <button 
+                  onClick={() => setSettings({...settings, autoScale: !settings.autoScale})}
+                  className={`w-11 h-6 rounded-full transition-colors relative ${settings.autoScale ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                >
+                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${settings.autoScale ? 'left-6' : 'left-1'}`} />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col">
+                  <label className="text-sm font-medium text-slate-700">Auto-update View</label>
+                  <span className="text-[10px] text-slate-400">Refresh on pan/zoom</span>
+                </div>
+                <button 
+                  onClick={() => setSettings({...settings, autoUpdate: !settings.autoUpdate})}
+                  className={`w-11 h-6 rounded-full transition-colors relative ${settings.autoUpdate ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                >
+                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${settings.autoUpdate ? 'left-6' : 'left-1'}`} />
+                </button>
+              </div>
             </div>
           </div>
         </section>
@@ -217,7 +277,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       <div className="p-6 text-[10px] text-slate-400 border-t border-slate-100 flex justify-between bg-slate-50/30">
-        <span className="font-medium">H3 MULTI-EXPLORER V2.1</span>
+        <span className="font-medium uppercase tracking-tight">H3 Multi-Explorer V2.5</span>
         <span className="flex items-center gap-1 hover:text-slate-600 cursor-pointer"><Info className="w-3 h-3" /> Help</span>
       </div>
     </div>
