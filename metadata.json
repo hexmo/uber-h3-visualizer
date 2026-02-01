@@ -1,0 +1,7 @@
+{
+  "name": "HexaGlobe H3 Explorer",
+  "description": "A powerful visualization tool for Uber's H3 hierarchical hexagonal indexing system. Explore resolutions and analyze spatial grid structures for any location on Earth.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
