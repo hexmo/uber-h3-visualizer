@@ -4,62 +4,46 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>HexaGlobe H3 Explorer</title>
+    <meta
+      name="description"
+      content="Interactive H3 grid explorer with hexagon overlays, map layers, and AI-assisted insights for geospatial analysis."
+    />
+    <meta name="robots" content="index, follow" />
+    <meta name="application-name" content="HexaGlobe H3 Explorer" />
+    <meta name="theme-color" content="#f8fafc" />
+    <meta name="color-scheme" content="light" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="HexaGlobe H3 Explorer" />
+    <meta
+      property="og:description"
+      content="Interactive H3 grid explorer with hexagon overlays, map layers, and AI-assisted insights for geospatial analysis."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="HexaGlobe H3 Explorer" />
+    <meta
+      name="twitter:description"
+      content="Interactive H3 grid explorer with hexagon overlays, map layers, and AI-assisted insights for geospatial analysis."
+    />
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
       crossorigin=""
     />
-    <style>
-      body,
-      html,
-      #root {
-        height: 100%;
-        min-height: 100dvh;
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-      }
-      #root {
-        display: flex;
-        flex-direction: column;
-      }
-      .leaflet-container {
-        background: #f8fafc;
-        height: 100%;
-        width: 100%;
-      }
-      /* Custom scrollbar for light mode */
-      ::-webkit-scrollbar {
-        width: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #f1f5f9;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
-      }
-    </style>
-    <script type="importmap">
+    <script type="application/ld+json">
       {
-        "imports": {
-          "react": "https://esm.sh/react@^19.2.4",
-          "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-          "react/": "https://esm.sh/react@^19.2.4/",
-          "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
-          "react-leaflet": "https://esm.sh/react-leaflet@^5.0.0",
-          "h3-js": "https://esm.sh/h3-js@^4.4.0",
-          "@google/genai": "https://esm.sh/@google/genai@^1.39.0"
-        }
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "HexaGlobe H3 Explorer",
+        "description": "Interactive H3 grid explorer with hexagon overlays, map layers, and AI-assisted insights for geospatial analysis.",
+        "applicationCategory": "GeospatialApplication",
+        "operatingSystem": "All"
       }
     </script>
   </head>
   <body class="bg-slate-50 text-slate-900">
     <div id="root"></div>
+    <noscript>Enable JavaScript to use HexaGlobe H3 Explorer.</noscript>
     <script type="module" src="/src/index.tsx"></script>
   </body>
 </html>
